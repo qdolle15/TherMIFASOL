@@ -2,6 +2,7 @@ from setuptools import setup, find_packages
 
 # version = subprocess.check_output(['git', 'describe','--tag', '--abbrev=0']).decode('ascii').strip()
 
+
 setup(
     name="TherMIFASOL",
     version="0.1.0",

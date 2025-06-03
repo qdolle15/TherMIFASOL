@@ -12,5 +12,17 @@
         "**/.ipynb_checkpoints": true,
         "data": true,
         "documentation": true
-    }
+    },
+    "cSpell.words": [
+        "extsynchro",
+        "maxtint",
+        "MIFASOL",
+        "mintint",
+        "nbframesperswtrig",
+        "ndarray",
+        "swsynchro",
+        "swtrig",
+        "Ther",
+        "tintstep"
+    ]
 }

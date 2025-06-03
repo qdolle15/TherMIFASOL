@@ -23,7 +23,7 @@ The project also includes:
 MIFASOL/
 ├── TherMIFASOL/
 │   ├── __init__.py
-│   ├── core/ or src/
+│   ├── core/
 │   │   ├── sensor_monitoring/
 │   │   ├── data_management/
 │   │   ├── models/

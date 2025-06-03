@@ -1,0 +1,16 @@
+{
+    "python.defaultInterpreterPath": ".venv/bin/python",
+    "python.venvPath": "${workspaceFolder}/.venv",
+    "python.analysis.autoSearchPaths": true,
+    "python.analysis.useLibraryCodeForTypes": true,
+    "git.showUntrackedFiles": "onlyTracked",
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/*.pyo": true,
+        "**/*.pyd": true,
+        "**/.ipynb_checkpoints": true,
+        "data": true,
+        "documentation": true
+    }
+}

@@ -21,10 +21,19 @@
         "mintint",
         "nbframesperswtrig",
         "ndarray",
+        "pcov",
+        "perr",
+        "popt",
+        "scienceplots",
         "skimage",
         "swsynchro",
         "swtrig",
         "Ther",
-        "tintstep"
+        "tintstep",
+        "xdata",
+        "Ximea",
+        "xlabel",
+        "ydata",
+        "ylabel"
     ]
 }

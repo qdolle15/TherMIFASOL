@@ -1,10 +1,29 @@
+# -----------------------
+# Python cache & compiled files
 __pycache__/
 *.py[cod]
-*.ipynb_checkpoints
+*.so
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Virtual environment
 .venv/
-.env
+env/
+venv/
+
+# VS Code project files
+.vscode/
+
+# Folders
 data/
 documentation/
 results/
-*.odt
+
+# Python packaging
 *.egg-info/
+dist/
+build/
+
+# Formats
+*.odt

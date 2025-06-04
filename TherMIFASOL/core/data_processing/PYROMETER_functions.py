@@ -2,50 +2,11 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 from TherMIFASOL.core.variables.GlobalVariables import (
-    C1, C2, FTEQ_PYRO_1, FTEQ_PYRO_2, LEQ_PYRO_1, LEQ_PYRO_2, _K
+    C2, FTEQ_PYRO_1, FTEQ_PYRO_2, LEQ_PYRO_1, LEQ_PYRO_2, _K
 )
+from TherMIFASOL.core.models.ThermalLaws import wien_law
 
 # Thermography laws
-def planck_law(wavelength, temperature):
-    """
-    Calculate the spectral radiance using Planck's law.
-
-    Parameters:
-    wavelength (float): Wavelength in meters.
-    temperature (float): Temperature in Kelvin.
-
-    Returns:
-    float: Spectral radiance.
-    """
-    return (C1*wavelength**-5)*(1/(np.exp(C2/(wavelength*temperature))-1))
-
-def wien_law(wavelength, temperature):
-    """
-    Calculate the spectral radiance using Wien's law.
-
-    Parameters:
-    wavelength (float): Wavelength in meters.
-    temperature (float): Temperature in Kelvin.
-
-    Returns:
-    float: Spectral radiance.
-    """
-    return (C1 * wavelength**-5) / (np.exp(C2 / (wavelength * temperature)))
-
-def wien_law_equivalent(temperature, FT_equivalent, wavelength_equivalent):
-    """
-    Calculate the spectral radiance using Wien's law equivalent.
-
-    Parameters:
-    temperature (float): Temperature in Kelvin.
-    FT_equivalent (float): Coefficient to bypass integration over the spectral range.
-    wavelength (float): Wavelength equivalent in meters  to bypass integration over the spectral range.
-
-    Returns:
-    float: Spectral radiance.
-    """
-    return FT_equivalent*(C1*wavelength_equivalent**-5)*(1/(np.exp(C2/(wavelength_equivalent*temperature))))
-
 def pyrometer_bichromatic_temperature(temperature_monochromatic_channel_1, temperature_monochromatic_channel_2):
     """
     Calculate the bichromatic temperature.

@@ -3,6 +3,7 @@ import numpy as np
 import os
 import sys
 import cv2
+from pathlib import Path
 
 from TherMIFASOL.core.monitoring.CRED2Lite.camera_control import CRED2LiteCamera
 from TherMIFASOL.core.monitoring.CRED2Lite.utils import (
@@ -10,8 +11,12 @@ from TherMIFASOL.core.monitoring.CRED2Lite.utils import (
     create_THERMAL_images_from_frames, create_RAW_images_from_frames,
     get_effective_FPS
 )
-from TherMIFASOL.core.variables.GlobalVariables import LINES_CRED, COLUMNS_CRED, BASE_DIR
+from TherMIFASOL.core.variables.GlobalVariables import LINES_CRED, COLUMNS_CRED
 
+try:
+    BASE_DIR = Path(__file__).resolve().parents[3]
+except NameError:
+    BASE_DIR = Path().resolve().parents[3]
 
 def acquire_data(fps:float, it:float, gain:str, tuning:str, image_count: int, trig: bool, comment: str, working_dir: str, period_temperature_sensor: float, roi: float) -> None:
     """

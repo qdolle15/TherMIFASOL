@@ -1,13 +1,5 @@
 import os
 import numpy as np
-from pathlib import Path
-
-# Work path project
-try:
-    BASE_DIR = Path(__file__).resolve()
-except NameError:
-    BASE_DIR = Path().resolve()
-
 
 # Constants related to the alloy under study
 T_SOLIDUS = 1530.15  # Solidus temperature of Inconel 718 [K]

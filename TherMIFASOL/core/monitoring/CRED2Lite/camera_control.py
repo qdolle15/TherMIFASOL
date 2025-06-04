@@ -3,14 +3,31 @@ import os
 import glob
 import time
 import numpy as np
-import logging
+from pathlib import Path
 
+# SDK of CRED2Lite management
+#-------------------------------------------------------------------------
 # Append the path to the FliSdk_V2 library
-lib_path = os.path.join("C:\\Program Files\\FirstLightImaging\\FliSdk\\Python\\lib")
-sys.path.append(os.path.abspath(lib_path))
-import FliSdk_V2
+fli_path = os.environ.get("FLI_SDK_PATH")
 
-from TherMIFASOL.src.data.CRED_functions import (
+if fli_path:
+    fli_path = Path(fli_path)
+else:
+    # Default path
+    fli_path = Path("C:/Program Files/FirstLightImaging/FliSdk/Python/lib")
+
+# Check and add path
+if fli_path.exists():
+    sys.path.append(str(fli_path.resolve()))
+    try:
+        import FliSdk_V2
+    except ImportError as e:
+        raise ImportError("FliSdk_V2 found but failed to import. Check SDK installation.") from e
+else:
+    raise FileNotFoundError(f"FliSdk_V2 path not found: {fli_path}")
+#-------------------------------------------------------------------------
+
+from TherMIFASOL.core.data_processing.CRED_functions import (
     load_cred_array, dl_to_nuc, dl_to_flux, dl_to_thermo
 )
 

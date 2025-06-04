@@ -1,6 +1,6 @@
-import numpy as np
 import cv2
-from TherMIFASOL.src.GlobalVariables import (
+import numpy as np
+from TherMIFASOL.core.variables.GlobalVariables import (
     CHANNEL, SUB_WIDTH_XIQ, SUB_LENGTH_XIQ, LINES_CRED, COLUMNS_CRED,
     LAMBDA_NIR, LAMBEQ_XIMEA, FTEQ_XIMEA, QE_NIR, FWHM_NIR, C1, C2
 )

@@ -4,7 +4,7 @@ from typing import Union
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-from TherMIFASOL.src.BoardCardFilterVariable import (
+from TherMIFASOL.core.variables.BoardCardFilterVariable import (
     params_linear, params_quadratic
 )
 

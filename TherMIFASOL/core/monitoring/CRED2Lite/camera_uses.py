@@ -3,7 +3,6 @@ import numpy as np
 import os
 import sys
 import cv2
-import matplotlib.pyplot as plt
 
 from TherMIFASOL.core.monitoring.CRED2Lite.camera_control import CRED2LiteCamera
 from TherMIFASOL.core.monitoring.CRED2Lite.utils import (
@@ -11,8 +10,8 @@ from TherMIFASOL.core.monitoring.CRED2Lite.utils import (
     create_THERMAL_images_from_frames, create_RAW_images_from_frames,
     get_effective_FPS
 )
+from TherMIFASOL.core.variables.GlobalVariables import LINES_CRED, COLUMNS_CRED, BASE_DIR
 
-from TherMIFASOL.src.GlobalVariables import LINES_CRED, COLUMNS_CRED
 
 def acquire_data(fps:float, it:float, gain:str, tuning:str, image_count: int, trig: bool, comment: str, working_dir: str, period_temperature_sensor: float, roi: float) -> None:
     """
@@ -31,14 +30,10 @@ def acquire_data(fps:float, it:float, gain:str, tuning:str, image_count: int, tr
         roi (float): Region of Interest as a fraction of the full frame.
     """
 
-    # base_dir = 'D:\\MIFASOL\\TherMIFASOL\\sensors_monitoring\\CRED2Lite\\results'
-    base_dir = '../../../../../results/'
-    # path_nuc = 'D:\\MIFASOL\\tables\\NUC\\NUC_2pts_Temp550_WithNeutralDensity.npy'
-    path_nuc = '../../../../resources/tables/NUC/NUC_2pts_Temp550_WithNeutralDensity.npy'
-    # path_calibration = 'D:\\MIFASOL\\tables\\FLUX\\FLUX_IT40_deg1_NUC2.npy'
-    path_calibration = '../../../../resources/tables/NUC/FLUX_IT40_deg1_NUC2.npy'
+    path_nuc = os.path.join(BASE_DIR, 'TherMIFASOL/resources/tables/NUC/NUC_2pts_Temp550_WithNeutralDensity.npy')
+    path_calibration = os.path.join(BASE_DIR, 'TherMIFASOL/resources/tables/FLUX/FLUX_IT40_deg1_NUC2.npy')
 
-    path_workspace = create_unique_directory(base_dir, working_dir)
+    path_workspace = create_unique_directory(os.path.join(BASE_DIR, 'results'), working_dir)
     path_array_data = create_unique_directory(path_workspace, 'data')
 
     with CRED2LiteCamera(fps=fps, it=it, gain=gain, tuning=tuning) as dev:

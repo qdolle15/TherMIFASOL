@@ -1,5 +1,5 @@
 import numpy as np
-from TherMIFASOL.src.GlobalVariables import (
+from TherMIFASOL.core.variables.GlobalVariables import (
     C1, C2, MAX_DL_VALUE, FTEQ_CRED, LAMBEQ_CRED
 )
 

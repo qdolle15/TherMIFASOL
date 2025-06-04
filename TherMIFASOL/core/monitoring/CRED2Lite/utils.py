@@ -1,16 +1,14 @@
 import os
 import re
+import gc
 import time
 import numpy as np
-import cv2
-import gc
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
 from tqdm import tqdm
 from skimage import measure
+import matplotlib.pyplot as plt
 
-from TherMIFASOL.src.GlobalVariables import COLUMNS_CRED, LINES_CRED, FAC, T_SOLIDUS
-from TherMIFASOL.src.data.CRED_functions import load_cred_array, dl_to_thermo
+from TherMIFASOL.core.variables.GlobalVariables import COLUMNS_CRED, LINES_CRED, FAC, T_SOLIDUS
+from TherMIFASOL.core.data_processing.CRED_functions import load_cred_array, dl_to_thermo
 
 import scienceplots
 plt.style.use(['science', 'notebook', 'grid'])

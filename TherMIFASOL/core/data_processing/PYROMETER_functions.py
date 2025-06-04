@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from datetime import datetime
-from ..GlobalVariables import (
+from TherMIFASOL.core.variables.GlobalVariables import (
     C1, C2, FTEQ_PYRO_1, FTEQ_PYRO_2, LEQ_PYRO_1, LEQ_PYRO_2, _K
 )
 

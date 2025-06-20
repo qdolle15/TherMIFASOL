@@ -1,5 +1,10 @@
 import cv2
 import numpy as np
+import pandas as pd
+from pathlib import Path
+from tqdm import tqdm
+import random
+
 from TherMIFASOL.core.variables.GlobalVariables import (
     CHANNEL, SUB_WIDTH_XIQ, SUB_LENGTH_XIQ, LINES_CRED, COLUMNS_CRED,
     LAMBDA_NIR, LAMBEQ_XIMEA, FTEQ_XIMEA, QE_NIR, FWHM_NIR, C1, C2
@@ -153,3 +158,248 @@ def apply_homographic_transformation(array_to_rescale, homographic_matrix):
     """
     xiq_rescaled = cv2.warpPerspective(array_to_rescale, homographic_matrix, (COLUMNS_CRED, LINES_CRED))
     return xiq_rescaled
+
+#=========================================================
+#                         Tools
+#=========================================================
+def combine_channels(channels: np.ndarray, pad: tuple = (3, 3)) -> np.ndarray:
+    """
+    Reconstruct a full 2D image from a 5x5 grid of downsampled image channels.
+
+    Parameters
+    ----------
+    channels : np.ndarray
+        Array of shape (25, H, W), each element is a low-res channel.
+    pad : tuple
+        Number of rows and columns to pad at the end (default: (3, 3)).
+
+    Returns
+    -------
+    np.ndarray
+        Full reconstructed image of shape (H*5 + pad[0], W*5 + pad[1]).
+    """
+    assert channels.shape[0] == 25, "Expected 25 sub-channels (5x5 grid)."
+    _, H, W = channels.shape
+    full_image = np.zeros((H * 5, W * 5), dtype=channels.dtype)
+
+    for cpt in range(25):
+        i, j = divmod(cpt, 5)
+        full_image[i::5, j::5] = channels[cpt]
+
+    # Restore cropped borders
+    return np.pad(full_image, ((0, pad[0]), (0, pad[1])), mode='constant')
+
+def get_IT_images(path_data_TCN: str) -> float:
+    """
+    Retrieve the exposure time from the metadata of a specific integration test.
+
+    Parameters
+    ----------
+    path_data_TCN : str
+        Path to the folder containing 'metadata.csv' and image .npy files.
+
+    Returns
+    -------
+    (float) Exposure time in microseconds.
+
+    Raises
+    ------
+    FileNotFoundError: If metadata.csv is missing.
+    KeyError: If 'ExposureTime' is not in the metadata.
+    """
+    path = Path(path_data_TCN)
+    metadata_file = path / 'metadata.csv'
+
+    if not metadata_file.exists():
+        raise FileNotFoundError(f"Metadata file not found at {metadata_file}")
+
+    metadata = pd.read_csv(metadata_file, encoding='unicode_escape', sep=',')
+    
+    if 'ExposureTime' not in metadata.columns:
+        raise KeyError("'ExposureTime' column is missing in metadata.")
+
+    return float(metadata['ExposureTime'].iloc[0])
+
+
+#=========================================================
+#                Non-uniformity Correction
+#=========================================================
+def select_random_image(path_data_TCN: str) -> np.ndarray:
+    """
+    Select a random image from a directory based on the metadata file.
+
+    Parameters
+    ----------
+    path_data_TCN : str
+        Path to the directory containing 'metadata.csv' and image .npy files.
+
+    Returns
+    -------
+    np.ndarray
+        The selected image as a 2D numpy array.
+
+    Raises
+    ------
+    FileNotFoundError
+        If metadata or image file is missing.
+    """
+    path_data_TCN = Path(path_data_TCN)
+    metadata_path = path_data_TCN / 'metadata.csv'
+
+    if not metadata_path.exists():
+        raise FileNotFoundError(f"Metadata file not found: {metadata_path}")
+
+    metadata = pd.read_csv(metadata_path, encoding='unicode_escape', sep=',')
+
+    if 't(s)' not in metadata.columns or 'ImageUniqueID' not in metadata.columns:
+        raise ValueError("Metadata must contain 't(s)' and 'ImageUniqueID' columns.")
+
+    times = metadata['t(s)'].to_numpy()
+    ids = metadata['ImageUniqueID'].to_numpy()
+
+    if len(ids) == 0:
+        raise ValueError("No images listed in metadata.")
+
+    # Choisir un index aléatoire
+    idx = random.randint(0, len(ids) - 1)
+    image_id = ids[idx]
+    timestamp = times[idx]
+
+    filename = path_data_TCN / f"{int(image_id):06d}_{timestamp:.3f}.npy"
+    if not filename.exists():
+        raise FileNotFoundError(f"Image file not found: {filename}")
+
+    return np.load(filename)
+
+
+def temporal_mean(path_data_TCN: str) -> np.ndarray:
+    """
+    Compute the temporal mean of image frames based on metadata.
+
+    Parameters
+    ----------
+    path_data_TCN : str
+        Path to the folder containing 'metadata.csv' and image .npy files.
+
+    Returns
+    -------
+    np.ndarray
+        2D array representing the temporal mean image.
+    """
+    path_data_TCN = Path(path_data_TCN)
+    metadata_path = path_data_TCN / 'metadata.csv'
+
+    # Load metadata
+    metadata = pd.read_csv(metadata_path, encoding='unicode_escape', sep=',')
+    times = metadata['t(s)'].to_numpy()
+    ids = metadata['ImageUniqueID'].to_numpy()
+    nb_img = len(ids)
+
+    frames = []
+
+    print(f"Loading {nb_img} frames from: {path_data_TCN}")
+    for t, i in tqdm(zip(times, ids), total=nb_img, desc="Loading frames"):
+        filename = path_data_TCN / f"{i:06d}_{t:.3f}.npy"
+        try:
+            frame = np.load(filename)
+            frames.append(frame)
+        except FileNotFoundError:
+            print(f"⚠️  Warning: File not found {filename}")
+
+    if not frames:
+        raise RuntimeError("No frames were successfully loaded.")
+
+    frames = np.array(frames)
+    return np.mean(frames, axis=0)
+
+def create_table_NUC_XIMEA(raw1: np.ndarray, raw2: np.ndarray,
+                              ref1: np.ndarray, ref2: np.ndarray) -> np.ndarray:
+    """
+    Compute NUC (Non-Uniformity Correction) coefficients from two calibration points.
+
+    Parameters
+    ----------
+    raw1 (np.ndarray (2D)): Temporal mean of uniform optical scene for the first record.
+    raw2 (np.ndarray (2D)): Temporal mean of uniform optical scene for the second record.
+    ref1 (np.ndarray (2D)): Reconstructed array of mean spatial values over the ROI for each channel of raw1.
+    ref2 (np.ndarray (2D)): Reconstructed array of mean spatial values over the ROI for each channel of raw2.
+
+    Returns
+    -------
+    coeff : np.ndarray
+        Array of shape (2, H, W) where:
+            coeff[0] = gain correction (slope),
+            coeff[1] = offset correction (intercept).
+    """
+    assert raw1.shape == raw2.shape == ref1.shape == ref2.shape, "All input arrays must have the same shape."
+    
+    H, W = raw1.shape
+    coeff = np.zeros((2, H, W), dtype=np.float32)
+
+    print("Fitting polynomial for each pixel...")
+    for idx in tqdm(range(H * W), desc="Pixels"):
+        i, j = divmod(idx, W)
+
+        x = [raw1[i, j], raw2[i, j]]
+        y = [ref1[i, j], ref2[i, j]]
+        coeff[:, i, j] = np.polyfit(x, y, deg=1)  # [slope, intercept]
+
+    return coeff
+
+def apply_NUC_XIMEA(image: np.ndarray, table: np.ndarray) -> np.ndarray:
+    """
+    Apply a 2-point NUC (gain + offset) correction to an image.
+
+    Parameters
+    ----------
+    image : np.ndarray
+        The raw image (2D).
+    table : np.ndarray
+        Correction table of shape (2, H, W): table[0] = gain, table[1] = offset.
+
+    Returns
+    -------
+    np.ndarray
+        Corrected image.
+    """
+    assert table.shape[0] == 2, "NUC table must have shape (2, H, W)."
+    return image * table[0] + table[1]
+
+#=========================================================
+#                   Flux calibration
+#=========================================================
+def reconstruct_calibration_flows(*channels: np.ndarray, base_shape=(1085, 2045), pad=(3, 3)) -> np.ndarray:
+    """
+    Reconstruct full-frame calibration maps from multiple downsampled 1D inputs.
+
+    Parameters
+    ----------
+    *channels : np.ndarray
+        Any number of 1D arrays of shape (25,), each representing one channel (A, B, ...).
+    base_shape : tuple
+        Shape of the original image before padding (default: (1085, 2045)).
+    pad : tuple
+        Padding to apply (rows_pad, cols_pad), default is (3, 3).
+
+    Returns
+    -------
+    np.ndarray
+        Reconstructed array of shape (n_channels, base_shape[0] + pad[0], base_shape[1] + pad[1])
+    """
+    n_channels = len(channels)
+    rows, cols = base_shape
+    grid_size = 5
+    full_frames = []
+
+    for ch in channels:
+        if len(ch) != 25:
+            raise ValueError("Each channel must be a 1D array of 25 values (5x5 grid).")
+        frame = np.zeros((rows, cols))
+        for cpt in range(25):
+            i, j = divmod(cpt, grid_size)
+            frame[i::grid_size, j::grid_size] = ch[cpt]
+        # Apply padding
+        frame = np.pad(frame, ((0, pad[0]), (0, pad[1])), mode='constant')
+        full_frames.append(frame)
+
+    return np.stack(full_frames, axis=0)

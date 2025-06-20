@@ -307,3 +307,38 @@ def plot_differences(ax, data, global_results, reference_id, x_values, ylabel, z
 
         axins.set_xticks(np.arange(zoom_params['xlim'][0], zoom_params['xlim'][1] + 1, 1))
         mark_inset(ax, axins, loc1=2, loc2=4, fc="none", ec="0.5")
+
+
+def display_pixels(coords, image_shape=(512, 640), colors=None):
+    """
+    Display crosshairs on a 2D blank image at given pixel coordinates.
+
+    Parameters
+    ----------
+    coords : list of tuple
+        List of (i, j) coordinates to mark (row, column).
+    image_shape : tuple
+        Shape of the image (height, width).
+    colors : list of str or None
+        List of colors for each coordinate. If None, default to red/green/blue.
+    """
+    height, width = image_shape
+    fake_img = np.ones(image_shape)
+
+    # Set default colors if none provided
+    if colors is None:
+        default_colors = ['r', 'g', 'b', 'c', 'm', 'y']
+        colors = default_colors[:len(coords)]
+
+    plt.figure(figsize=(6, 5))
+    plt.imshow(fake_img, cmap='gray', vmin=0, vmax=2)
+
+    for (i, j), color in zip(coords, colors):
+        plt.axhline(height - i, color=color, linestyle='--', linewidth=1)
+        plt.axvline(j, color=color, linestyle='--', linewidth=1)
+
+    plt.xlim(0, width)
+    plt.ylim(0, height)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.show()

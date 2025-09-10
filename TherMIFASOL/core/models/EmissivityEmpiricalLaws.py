@@ -96,11 +96,20 @@ def wagner_inspired_emissivity(temperature, depth, unit, block, evolution, eps_m
     b0 = params['b0']
     T0 = params['T0']  
 
-    # Application de la loi    
-    result = a * ((temperature - T0) / sigma)**(1/n) + b0
+
+    temperature = np.asarray(temperature)
+    result = np.full_like(temperature, b0, dtype=np.float64)
+    mask = temperature > T0
+
+    # Check if sigma is a scalar or array
+    if np.isscalar(sigma):
+        # Use scalar directly
+        result[mask] = a * ((temperature[mask] - T0) / sigma)**(1/n) + b0
+    else:
+        result[mask] = a * ((temperature[mask] - T0) / sigma[mask])**(1/n) + b0
 
     if block:
-        a_linear, b_linear = [-2.84957815e-04,  8.28861586e-01]
+        a_linear, b_linear = -2.84957815e-04, 8.28861586e-01
         linear_lower_bound = a_linear * temperature + b_linear
         result = np.maximum(result, np.maximum(linear_lower_bound, eps_min))
     else:

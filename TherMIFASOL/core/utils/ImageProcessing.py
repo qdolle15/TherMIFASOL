@@ -82,7 +82,7 @@ def join_images(image1_path, image2_path, image3_path, output_image_path):
     # print(f"Image finale créée: {output_image_path}")
 
 
-# Exemple d'utilisation
+# Example
 if __name__ == "__name__":
     input_folder = "/home/dolle/Bureau/GradientThermique/EPS40_TEMPOR_LONGUE_bis"
     output_folder = "/home/dolle/Bureau/GradientThermique/EPS40_TEMPOR_LONGUE_bis/crop/"

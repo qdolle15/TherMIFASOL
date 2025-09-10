@@ -69,6 +69,8 @@ params_clip = {
         'crop low':5,
         'crop high':13,
         'FPS estimate':493.6,
+        'delay':0.1,
+        'upper limit px': 305
     },
     12:{
         'start frame':0,
@@ -77,6 +79,8 @@ params_clip = {
         'crop low':5,
         'crop high':13,
         'FPS estimate':487.6,
+        'delay':0.13,
+        'upper limit px': 275
     },
     13:{
         'start frame':0,
@@ -85,6 +89,8 @@ params_clip = {
         'crop low':5,
         'crop high':13,
         'FPS estimate':495.0,
+        'delay':0.12,
+        'upper limit px': 252
     },
     14:{
         'start frame':1500,
@@ -93,6 +99,8 @@ params_clip = {
         'crop low':5,
         'crop high':13,
         'FPS estimate':491.4,
+        'delay':0.13,
+        'upper limit px': 235
     },
     15:{
         'start frame':0,
@@ -101,6 +109,8 @@ params_clip = {
         'crop low':5,
         'crop high':13,
         'FPS estimate':497.5,
+        'delay':0.15,
+        'upper limit px': 210
     },
     16:{
         'start frame':1200,
@@ -109,6 +119,8 @@ params_clip = {
         'crop low':5,
         'crop high':13,
         'FPS estimate':484.1,
+        'delay':0.13,
+        'upper limit px': 185
     }
 }
 

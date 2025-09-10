@@ -286,10 +286,11 @@ def plot_differences(ax, data, global_results, reference_id, x_values, ylabel, z
     - ylabel: Label for the y-axis.
     - zoom_params: Dictionary containing zoom parameters (xlim, ylim) for the inset.
     """
+    
     for eps_id in global_results:
         val_eps = global_results[eps_id]['eps']
         col_eps = global_results[eps_id]['color']
-        label = r'$\varepsilon_{init} =$' + (f'{val_eps} : référence' if eps_id == reference_id else f'{val_eps}')
+        label = r'$\varepsilon_{init} =$' + (f'{val_eps} : reference' if eps_id == reference_id else f'{val_eps}')
         ax.plot(x_values, data[:, eps_id], 'o--', color=col_eps, label=label)
 
     ax.set_ylabel(ylabel, fontsize=20)

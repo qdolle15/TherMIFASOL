@@ -271,7 +271,6 @@ def select_random_image(path_data_TCN: str) -> np.ndarray:
 
     return np.load(filename)
 
-
 def temporal_mean(path_data_TCN: str) -> np.ndarray:
     """
     Compute the temporal mean of image frames based on metadata.

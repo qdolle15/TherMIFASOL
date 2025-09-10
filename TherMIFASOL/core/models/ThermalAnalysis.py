@@ -1,3 +1,4 @@
+import re
 import numpy as np
 import matplotlib.pyplot as plt
 from skimage import measure
@@ -8,6 +9,28 @@ from matplotlib.cm import ScalarMappable
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
+
+# -----
+# Shape
+# -----
+def format_storing_shape_dimension(index, value1, value2, value3, value4) -> str:
+    """
+    Format a row representing shape dimensions for display or storage.
+
+    Parameters
+    ----------
+        index (int or str): Identifier of the shape (e.g., row index or label).
+        value1 (float): Length of the liquidus approximation.
+        value2 (float): Depth of the liquidus approximation.
+        value3 (float): Length of the solidus approximation.
+        value4 (float): Depth of the solidus approximation.
+
+    Returns
+    -------
+        (str): A formatted string with fixed-width columns and two decimal places for the numerical values.
+    """
+
+    return f"{index:^10} | {value1:^20.2f} | {value2:^20.2f} | {value3:^20.2f} | {value4:^20.2f}\n"
 
 def shape_quantification(x_pts: np.ndarray, y_pts: np.ndarray, xc: float, yc: float) -> tuple:
     """
@@ -22,6 +45,9 @@ def shape_quantification(x_pts: np.ndarray, y_pts: np.ndarray, xc: float, yc: fl
     Returns:
     tuple: The semi-major axis (a) and semi-minor axis (b) of the fitted ellipse.
     """
+    if len(x_pts) == 0 or len(y_pts) == 0:
+        return -1, -1
+
     # Calculate the design matrix M
     M = np.vstack(((x_pts - xc)**2, (y_pts - yc)**2)).T
 
@@ -33,7 +59,10 @@ def shape_quantification(x_pts: np.ndarray, y_pts: np.ndarray, xc: float, yc: fl
 
     # Solve the linear least squares problem
     # A, B = np.linalg.lstsq(M, Mt1, rcond=None)[0]
-    A, B = np.dot(np.linalg.inv(np.dot(M.T, M)), Mt1)
+    try:
+        A, B = np.dot(np.linalg.inv(np.dot(M.T, M)), Mt1)
+    except np.linalg.LinAlgError:
+        A, B = -1, -1
 
     # Calculate the semi-major and semi-minor axes
     semi_major_axis = np.sqrt(1 / A)
@@ -41,9 +70,84 @@ def shape_quantification(x_pts: np.ndarray, y_pts: np.ndarray, xc: float, yc: fl
 
     return semi_major_axis, semi_minor_axis
 
-def hunt_data_on_isotherm(working_image: np.ndarray, T_target: float, reference_point: tuple,
+def get_shape_quantification_from_rapport(path):
+    """
+    Parse a report.txt file and extract metadata, data table, and summary stats.
+
+    Parameters
+    ----------
+    path : str
+        Path to the report file.
+    return_dict : bool, optional
+        If True, return a dictionary {metadata, data, stats}.
+
+    Returns
+    -------
+    dict or pandas.DataFrame
+        Dictionary with keys:
+        - "metadata": dict with general info from the header
+        - "data": Numpy array with numeric values
+        - "stats": dict with Failure/Success/Not treated percentages
+    """
+    with open(path, "r") as file:
+        lines = [line.rstrip() for line in file]
+
+    metadata = {}
+    data = []
+    stats = {}
+
+    # --- Extract metadata ---
+    for line in lines:
+        if line.startswith("epsilon"):
+            metadata["epsilon"] = float(line.split(":")[1].strip())
+        elif line.startswith("Ellipse center"):
+            coords = re.findall(r"\d+\.?\d*", line)
+            metadata["ellipse_center"] = tuple(map(float, coords))
+        elif line.startswith("scale factor"):
+            metadata["scale_factor_px_per_mm"] = float(line.split(":")[1].split()[0])
+        elif line.startswith("Solidus"):
+            metadata["Tsol"] = float(line.split(":")[1].split()[0])
+        elif line.startswith("Liquidus"):
+            metadata["Tliq"] = float(line.split(":")[1].split()[0])
+
+    # --- Extract table ---
+    start_data = False
+    for line in lines:
+        if start_data:
+            if line.startswith("-") or not line.strip():
+                continue
+            if line.startswith("Failure") or line.startswith("Success") or line.startswith("Not"):
+                break
+            values = [v.strip() for v in line.split("|")]
+            data.append([
+                int(values[0]),
+                float(values[1]),
+                float(values[2]),
+                float(values[3]),
+                float(values[4])
+            ])
+        if line.startswith("---"):
+            start_data = True
+
+    # --- Extract stats ---
+    for line in lines:
+        if line.startswith("Failure"):
+            stats["failure"] = int(line.split(":")[1].replace("%","").strip())
+        elif line.startswith("Success"):
+            stats["success"] = int(line.split(":")[1].replace("%","").strip())
+        elif line.startswith("Not treated"):
+            stats["not_treated"] = int(line.split(":")[1].replace("%","").strip())
+
+    return {"metadata": metadata, "data": np.asarray(data), "stats": stats}
+
+
+# --------
+# Dynamics
+# --------
+def hunt_data_on_isotherm(working_image: np.ndarray, T_target: float,
+                          reference_point: tuple, direction:bool,
                           norm_thermal_gradient: np.ndarray, orientation_thermal_gradient: np.ndarray,
-                          save_data: bool = False, laser_speed: float = 0.0167) -> tuple:
+                          save_path, laser_speed: float = 0.0167) -> tuple:
     """
     Extract and process thermal gradient data on an isotherm.
 
@@ -51,6 +155,9 @@ def hunt_data_on_isotherm(working_image: np.ndarray, T_target: float, reference_
         working_image (np.ndarray): The image to process.
         T_target (float): The target temperature for finding the isotherm.
         reference_point (tuple): The reference point (Xc, Yc) for filtering contour points.
+        direction (bool) : Inform if the heat source is moving toward the right or toward the left.
+            - True : the heat source moves toward the right.
+            - False : the heat source moves toward the left.
         norm_thermal_gradient (np.ndarray): The thermal gradient norm [K/m].
         orientation_thermal_gradient (np.ndarray): The thermal gradient orientation [radians].
         save_data (bool): Whether to save the processed data to a file.
@@ -70,7 +177,11 @@ def hunt_data_on_isotherm(working_image: np.ndarray, T_target: float, reference_
     largest_contour = max(contours, key=len)
 
     # Filter out points where x-coordinate is greater than Xc and y-coordinate is greater than Yc
-    isotherm_coordinates = largest_contour[(largest_contour[:, 1] > Xc) & (largest_contour[:, 0] > Yc)]
+    if direction:
+        isotherm_coordinates = largest_contour[(largest_contour[:, 1] < Xc) & (largest_contour[:, 0] > Yc)]
+    else:
+        isotherm_coordinates = largest_contour[(largest_contour[:, 1] > Xc) & (largest_contour[:, 0] > Yc)]
+
     isotherm_indices = (isotherm_coordinates[:, 0].astype(int), isotherm_coordinates[:, 1].astype(int))
 
     # 1/4 ellipse approximation
@@ -82,23 +193,37 @@ def hunt_data_on_isotherm(working_image: np.ndarray, T_target: float, reference_
     )
 
     # Filter thermal gradient orientation
-    sub_filter = np.logical_and(
-        (orientation_thermal_gradient[isotherm_indices] < -np.pi / 2),
-        (orientation_thermal_gradient[isotherm_indices] > -np.pi)
+    if direction:
+        sub_filter = np.logical_and(
+            orientation_thermal_gradient[isotherm_indices] > -np.pi / 2,
+            orientation_thermal_gradient[isotherm_indices] < 0
+        )
+    else:
+        sub_filter = np.logical_and(
+            (orientation_thermal_gradient[isotherm_indices] < -np.pi / 2),
+            (orientation_thermal_gradient[isotherm_indices] > -np.pi)
+        )
+
+    consistent_thermal_data_indices = (
+        isotherm_indices[0][sub_filter],
+        isotherm_indices[1][sub_filter]
     )
-    consistent_thermal_data_indices = (isotherm_indices[0][sub_filter], isotherm_indices[1][sub_filter])
 
     # Thermal gradient on isotherm [K/px]
     G_on_isotherm = norm_thermal_gradient[isotherm_indices][sub_filter]
+    # Orientation of the thermal gradient with respect to +y [rad]
+    thermal_gradient_orientation_on_isotherm = orientation_thermal_gradient[isotherm_indices][sub_filter]
     # Solidification speed front on isotherm [m/s]
-    R_on_isotherm = laser_speed * np.cos(orientation_thermal_gradient[isotherm_indices][sub_filter])
+    R_on_isotherm = laser_speed * np.cos(thermal_gradient_orientation_on_isotherm)
 
-    if save_data:
-        data = np.column_stack((G_on_isotherm, R_on_isotherm))
-        header = "G[K/m] R[m/sec]"
-        np.savetxt('Hunt_data.txt', data, delimiter=' ', header=header, comments='', fmt='%d')
+    if save_path:
+        data = np.column_stack(
+            (G_on_isotherm, thermal_gradient_orientation_on_isotherm, R_on_isotherm)
+            )
+        header = "G[K/m] Theta[rad] R[m/sec]"
+        np.savetxt(save_path, data, delimiter=' ', header=header, comments='', fmt='%d')
 
-    return length, depth, isotherm_indices, G_on_isotherm, R_on_isotherm, consistent_thermal_data_indices
+    return length, depth, isotherm_indices, G_on_isotherm, thermal_gradient_orientation_on_isotherm, R_on_isotherm, consistent_thermal_data_indices
 
 def classify_growth_mode(thermal_gradient_data: np.ndarray, solidification_rate_data: np.ndarray, power_fit_params: dict) -> np.ndarray:
     """
@@ -203,8 +328,9 @@ def display_hunt_criterion(R_data: np.ndarray, G_data: np.ndarray, power_fit_par
     else:
         plt.show()
 
-def display_G_and_R_on_images(image_to_plot: np.ndarray, T_target:float, hunt_coo:tuple, filtered_gradient: np.ndarray,
-                              filtered_orientation: np.ndarray, crop_y_axis:tuple, laser_speed: float = 0.0167) -> None:
+def display_G_and_R_on_images(image_to_plot: np.ndarray, T_target:float,
+                              hunt_coo:tuple, filtered_gradient: np.ndarray,
+                              filtered_orientation: np.ndarray, crop_y_axis:tuple, saving_path:str, scale_arrow: float, laser_speed: float = 0.0167) -> None:
     """
     Display thermal gradient and solidification front velocity on images.
 
@@ -249,7 +375,7 @@ def display_G_and_R_on_images(image_to_plot: np.ndarray, T_target:float, hunt_co
         hunt_coo[1], hunt_coo[0],
         gradient_x, gradient_y,
         filtered_gradient,
-        angles='xy', scale_units='xy', scale=10, cmap='coolwarm'
+        angles='xy', scale_units='xy', cmap='coolwarm'
     )
     ax1.scatter(hunt_coo[1], hunt_coo[0], s=1, c='g')
     ax1.tick_params(axis='both', which='major', labelsize=12)
@@ -261,7 +387,7 @@ def display_G_and_R_on_images(image_to_plot: np.ndarray, T_target:float, hunt_co
         hunt_coo[1], hunt_coo[0],
         front_speed_x, front_speed_y,
         front_speed_norm,
-        angles='xy', scale_units='xy', scale=0.1, cmap='plasma'
+        angles='xy', scale_units='xy', cmap='plasma'
     )
     ax2.scatter(hunt_coo[1], hunt_coo[0], s=1, c='g')
     ax2.tick_params(axis='both', which='major', labelsize=12)
@@ -292,9 +418,11 @@ def display_G_and_R_on_images(image_to_plot: np.ndarray, T_target:float, hunt_co
     ax2.tick_params(axis='both', which='both', bottom=False, left=False, labelleft=False, labelbottom=False)
 
     # Save the figure
-    plt.show()
-
-
+    if saving_path:
+        fig.savefig(saving_path, format='png', bbox_inches='tight')
+        plt.close(fig)
+    else:
+        plt.show()
 
 def plot_gradient(GradThermique, crop_thermo: np.ndarray, gradient_norm: np.ndarray, masked_X0: np.ndarray, masked_Y0: np.ndarray, masked_fx0: np.ndarray, masked_fy0: np.ndarray, masked_norm0: np.ndarray, T_target: float, dir_name: str, cpt: int) -> None:
     """

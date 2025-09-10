@@ -1,3 +1,5 @@
+import os
+
 def compute_centered_roi(shape, percent=0.3):
     """
     Compute a centered square/rectangular ROI based on a percentage of the image size.
@@ -27,3 +29,30 @@ def compute_centered_roi(shape, percent=0.3):
         col_center - half_w,
         col_center + half_w,
     )
+
+def create_unique_folder(path: str) -> str:
+    """
+    Create a unique folder from a given path.
+    If the folder already exists, append a numeric suffix (_1, _2, ...) 
+    until a free name is found. Then create the folder.
+
+    Parameters
+    ----------
+    path : str
+        Base path of the folder to create.
+
+    Returns
+    -------
+    str
+        Path of the folder that was actually created.
+    """
+    folder_path = os.path.abspath(path)
+    counter = 1
+
+    # Increment until a free path is found
+    while os.path.exists(folder_path):
+        folder_path = f"{os.path.abspath(path)}_{counter}"
+        counter += 1
+
+    os.makedirs(folder_path)
+    return folder_path

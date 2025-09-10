@@ -1,0 +1,3 @@
+la table NUC "NUC_lumiere_photographe_2pts.npy" a été prise de IT différents devant un éclairage de photographe avec une surface diffusive.
+
+Les tables de flux sont de dimension (2, 1088, 2048) avec une construction en moisaique pour les 25 canaux. Ces tables ont été calculées pour des temps d'intégration devant un corps noir cavité. La table de NUC "NUC_lumiere_photographe_2pts.npy" a été appliquée pour trouver les lois.

@@ -62,12 +62,62 @@ params_quadratic = {
 
 # beads mean information camera
 params_clip = {
+    6:{
+        'start frame':1200,
+        'end frame':2300,
+        'snapshot':1900,
+        'crop low':0,
+        'crop high':8,
+        'FPS estimate':500,
+        'delay':0.1,
+        'upper limit px': 410
+    },
+    7:{
+        'start frame':0,
+        'end frame':1,
+        'snapshot':1220,
+        'crop low':0,
+        'crop high':8,
+        'FPS estimate':500,
+        'delay':0.1,
+        'upper limit px': 380
+    },
+    8:{
+        'start frame':0,
+        'end frame':1,
+        'snapshot':1720,
+        'crop low':0,
+        'crop high':8,
+        'FPS estimate':500,
+        'delay':0.08,
+        'upper limit px': 365
+    },
+    9:{
+        'start frame':0,
+        'end frame':1,
+        'snapshot':1080,
+        'crop low':0,
+        'crop high':8,
+        'FPS estimate':500,
+        'delay':0.1,
+        'upper limit px': 340
+    },
+    10:{
+        'start frame':0,
+        'end frame':1,
+        'snapshot':1255,
+        'crop low':0,
+        'crop high':8,
+        'FPS estimate':500,
+        'delay':0.1,
+        'upper limit px': 318
+    },
     11:{
         'start frame':550,
         'end frame':1500,
         'snapshot':1220,
-        'crop low':5,
-        'crop high':13,
+        'crop low':3,
+        'crop high':11,
         'FPS estimate':493.6,
         'delay':0.1,
         'upper limit px': 305
@@ -76,8 +126,8 @@ params_clip = {
         'start frame':0,
         'end frame':700,
         'snapshot':310,
-        'crop low':5,
-        'crop high':13,
+        'crop low':3,
+        'crop high':11,
         'FPS estimate':487.6,
         'delay':0.13,
         'upper limit px': 275
@@ -86,8 +136,8 @@ params_clip = {
         'start frame':0,
         'end frame':450,
         'snapshot':320,
-        'crop low':5,
-        'crop high':13,
+        'crop low':3,
+        'crop high':11,
         'FPS estimate':495.0,
         'delay':0.12,
         'upper limit px': 252
@@ -96,8 +146,8 @@ params_clip = {
         'start frame':1500,
         'end frame':2100,
         'snapshot':1823,
-        'crop low':5,
-        'crop high':13,
+        'crop low':3,
+        'crop high':11,
         'FPS estimate':491.4,
         'delay':0.13,
         'upper limit px': 235
@@ -106,8 +156,8 @@ params_clip = {
         'start frame':0,
         'end frame':550,
         'snapshot':470,
-        'crop low':5,
-        'crop high':13,
+        'crop low':3,
+        'crop high':11,
         'FPS estimate':497.5,
         'delay':0.15,
         'upper limit px': 210
@@ -116,8 +166,8 @@ params_clip = {
         'start frame':1200,
         'end frame':2000,
         'snapshot':1630,
-        'crop low':5,
-        'crop high':13,
+        'crop low':3,
+        'crop high':11,
         'FPS estimate':484.1,
         'delay':0.13,
         'upper limit px': 185

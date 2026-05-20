@@ -1,3 +1,4 @@
+import os
 import re
 import numpy as np
 import matplotlib.pyplot as plt
@@ -5,6 +6,8 @@ from skimage import measure
 
 from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
+from matplotlib.patches import Arc
+import matplotlib.backends.backend_pdf
 
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -178,9 +181,9 @@ def hunt_data_on_isotherm(working_image: np.ndarray, T_target: float,
 
     # Filter out points where x-coordinate is greater than Xc and y-coordinate is greater than Yc
     if direction:
-        isotherm_coordinates = largest_contour[(largest_contour[:, 1] < Xc) & (largest_contour[:, 0] > Yc)]
+        isotherm_coordinates = largest_contour[(largest_contour[:, 1] < Xc) & (largest_contour[:, 1] > 10) & (largest_contour[:, 0] > Yc)]
     else:
-        isotherm_coordinates = largest_contour[(largest_contour[:, 1] > Xc) & (largest_contour[:, 0] > Yc)]
+        isotherm_coordinates = largest_contour[(largest_contour[:, 1] > Xc) & (largest_contour[:, 1] < 630) & (largest_contour[:, 0] > Yc)]
 
     isotherm_indices = (isotherm_coordinates[:, 0].astype(int), isotherm_coordinates[:, 1].astype(int))
 
@@ -328,9 +331,10 @@ def display_hunt_criterion(R_data: np.ndarray, G_data: np.ndarray, power_fit_par
     else:
         plt.show()
 
-def display_G_and_R_on_images(image_to_plot: np.ndarray, T_target:float,
+def display_G_and_R_on_images_old(image_to_plot: np.ndarray, T_target:float,
                               hunt_coo:tuple, filtered_gradient: np.ndarray,
-                              filtered_orientation: np.ndarray, crop_y_axis:tuple, saving_path:str, scale_arrow: float, laser_speed: float = 0.0167) -> None:
+                              filtered_orientation: np.ndarray, crop_y_axis:tuple, 
+                              saving_path:str, laser_speed: float = 0.0167) -> None:
     """
     Display thermal gradient and solidification front velocity on images.
 
@@ -363,6 +367,7 @@ def display_G_and_R_on_images(image_to_plot: np.ndarray, T_target:float,
     # Normalize the front speed for color mapping
     front_speed_norm = np.sqrt(front_speed_x**2 + front_speed_y**2)
     norm_R = Normalize(vmin=R_vmin, vmax=R_vmax)
+
 
     # Create the figure with a simple layout: 1 column, 2 rows
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12), constrained_layout=False)
@@ -423,6 +428,192 @@ def display_G_and_R_on_images(image_to_plot: np.ndarray, T_target:float,
         plt.close(fig)
     else:
         plt.show()
+
+
+def display_G_and_R_on_images(image_to_plot: np.ndarray, T_target: float,
+                            hunt_coo: tuple, filtered_gradient: np.ndarray,
+                            filtered_orientation: np.ndarray, crop_y_axis: tuple,
+                            saving_path: str, ref_point: tuple,
+                            semi_axis: tuple,
+                            int_id_cordon:int,
+                            path_to_CET:str,
+                            solidification_rate_on_isotherm: np.ndarray, laser_speed: float = 0.0167) -> None:
+    """
+    Display thermal gradient and solidification front velocity on separate PDFs, plus a third PDF with hunt coordinates and ellipse.
+
+    Args:
+        image_to_plot (np.ndarray): The image to plot.
+        T_target (float): The target temperature for finding the isotherm.
+        hunt_coo (tuple): The coordinates for the hunt data.
+        filtered_gradient (np.ndarray): The filtered thermal gradient norm.
+        filtered_orientation (np.ndarray): The filtered thermal gradient orientation.
+        crop_y_axis (tuple): bottom and top limits for imshow cropping
+        saving_path (str): Base path for saving PDFs (without extension)
+        scale_arrow (float): Scale factor for arrows
+        ref_point (tuple): Center point of the ellipse (x, y)
+        semi_axis (tuple): Semi-axes of the ellipse (a, b)
+        laser_speed (float): The laser speed in m/s.
+    Returns:
+        None
+    """
+    crop_min, crop_max = crop_y_axis
+    scale_arrow = 1
+
+    # Set ranges for colorbars
+    T_vmin, T_vmax = 500, 1800  # Temperatures [K]
+    G_vmin, G_vmax = 0, 2e5  # Thermal gradients [K/mm]
+    R_vmin, R_vmax = 0, laser_speed  # Solidification speed rates [m/s]
+
+    # Calculate gradient components
+    gradient_x = filtered_gradient * np.cos(filtered_orientation)
+    gradient_y = filtered_gradient * np.sin(filtered_orientation)
+
+    # Calculate front speed components
+    front_speed_x = laser_speed * np.cos(filtered_orientation)
+    front_speed_y = laser_speed * np.sin(filtered_orientation)
+
+    # Normalize the front speed for color mapping
+    front_speed_norm = np.sqrt(front_speed_x**2 + front_speed_y**2)
+    norm_R = Normalize(vmin=R_vmin, vmax=R_vmax)
+    norm_G = Normalize(vmin=G_vmin, vmax=G_vmax)
+
+    # Create PDF for thermal gradient
+    with matplotlib.backends.backend_pdf.PdfPages(f"{saving_path}_gradient.pdf") as pdf1:
+        fig1, ax1 = plt.subplots(1, 1, figsize=(10, 6))
+        cax1 = ax1.imshow(image_to_plot, cmap='gray', vmin=T_vmin, vmax=T_vmax)
+        ax1.set_ylim(crop_min, crop_max)
+
+        quiver1 = ax1.quiver(
+            hunt_coo[1], hunt_coo[0],
+            gradient_x, gradient_y,
+            filtered_gradient,
+            angles='xy', scale_units='xy', cmap='coolwarm'
+        )
+        ax1.scatter(hunt_coo[1], hunt_coo[0], s=1, c='g')
+
+        # Add colorbars
+        cbar_ax_temp = fig1.add_axes([0.9, 0.2, 0.02, 0.5])
+        cbar_temp = fig1.colorbar(cax1, cax=cbar_ax_temp, orientation='vertical')
+        cbar_temp.set_label('Temperature [K]', fontsize=12)
+        cbar_temp.ax.tick_params(labelsize=12)
+        cbar_temp.ax.axhline(T_target, color='g', linestyle='-', linewidth=2)
+
+        cbar_ax_grad = fig1.add_axes([0.15, 0.1, 0.7, 0.02])
+        sm_grad = ScalarMappable(norm=norm_G, cmap='coolwarm')
+        cbar_grad = fig1.colorbar(sm_grad, cax=cbar_ax_grad, orientation='horizontal')
+        cbar_grad.set_label('Thermal Gradient [K/m]', fontsize=12)
+        cbar_grad.ax.tick_params(labelsize=12)
+
+        ax1.tick_params(axis='both', which='both', bottom=False, left=False, labelleft=False, labelbottom=False)
+        ax1.set_title('Thermal Gradient')
+
+        pdf1.savefig(fig1)
+        plt.close(fig1)
+
+    # Create PDF for cooling rate
+    with matplotlib.backends.backend_pdf.PdfPages(f"{saving_path}_cooling_rate.pdf") as pdf2:
+        fig2, ax2 = plt.subplots(1, 1, figsize=(10, 6))
+        cax2 = ax2.imshow(image_to_plot, cmap='gray', vmin=T_vmin, vmax=T_vmax)
+        ax2.set_ylim(crop_min, crop_max)
+
+        quiver2 = ax2.quiver(
+            hunt_coo[1], hunt_coo[0],
+            front_speed_x, front_speed_y,
+            front_speed_norm,
+            angles='xy', scale_units='xy', cmap='plasma'
+        )
+        ax2.scatter(hunt_coo[1], hunt_coo[0], s=1, c='g')
+
+        # Add colorbars
+        cbar_ax_temp = fig2.add_axes([0.9, 0.2, 0.02, 0.5])
+        cbar_temp = fig2.colorbar(cax2, cax=cbar_ax_temp, orientation='vertical')
+        cbar_temp.set_label('Temperature [K]', fontsize=12)
+        cbar_temp.ax.tick_params(labelsize=12)
+        cbar_temp.ax.axhline(T_target, color='g', linestyle='-', linewidth=2)
+
+        cbar_ax_rate = fig2.add_axes([0.15, 0.1, 0.7, 0.02])
+        sm_rate = ScalarMappable(norm=norm_R, cmap='plasma')
+        cbar_rate = fig2.colorbar(sm_rate, cax=cbar_ax_rate, orientation='horizontal')
+        cbar_rate.set_label('Solidification Front Velocity [m/s]', fontsize=12)
+        cbar_rate.ax.tick_params(labelsize=12)
+
+        ax2.tick_params(axis='both', which='both', bottom=False, left=False, labelleft=False, labelbottom=False)
+        ax2.set_title('Solidification Front Velocity')
+
+        pdf2.savefig(fig2)
+        plt.close(fig2)
+
+    # Create PDF for hunt coordinates with ellipse
+    with matplotlib.backends.backend_pdf.PdfPages(f"{saving_path}_ellipse.pdf") as pdf3:
+        fig3, ax3 = plt.subplots(1, 1, figsize=(10, 6))
+        cax3 = ax3.imshow(image_to_plot, cmap='gray', vmin=T_vmin, vmax=T_vmax)
+        ax3.set_ylim(crop_min, crop_max)
+
+        # Plot hunt coordinates
+        ax3.scatter(hunt_coo[1], hunt_coo[0], s=1, c='g', label='Hunt Coordinates')
+
+        # Add quarter ellipse
+        a, b = semi_axis
+        if int_id_cordon % 2 == 0:  # Even: right side (0° to 90°)
+            theta1, theta2 = 90, 180
+        else:  # Odd: left side (90° to 180°)
+            theta1, theta2 = 0, 90
+
+        quarter_ellipse = Arc(ref_point, width=2*a, height=2*b,
+                             angle=0, theta1=theta1, theta2=theta2,
+                             edgecolor='g', linestyle='--', linewidth=2, label='Quarter Ellipse')
+        ax3.add_patch(quarter_ellipse)
+
+        # Add reference point marker
+        ax3.scatter(ref_point[0], ref_point[1], s=20, c='r', marker='x', label='Reference Point')
+
+        # Add legend
+        ax3.legend(loc='upper right')
+
+        # Add colorbar for temperature
+        cbar_ax_temp = fig3.add_axes([0.9, 0.2, 0.02, 0.5])
+        cbar_temp = fig3.colorbar(cax3, cax=cbar_ax_temp, orientation='vertical')
+        cbar_temp.set_label('Temperature [K]', fontsize=12)
+        cbar_temp.ax.tick_params(labelsize=12)
+        cbar_temp.ax.axhline(T_target, color='g', linestyle='-', linewidth=2)
+
+        ax3.tick_params(axis='both', which='both', bottom=False, left=False, labelleft=False, labelbottom=False)
+        ax3.set_title('Hunt Coordinates with Quarter Ellipse')
+
+        pdf3.savefig(fig3)
+        plt.close(fig3)
+
+    # Create PDF for hunt coordinates with ellipse
+    with matplotlib.backends.backend_pdf.PdfPages(f"{saving_path}_HuntGraph.pdf") as pdf4:
+        fig4, ax4 = plt.subplots(1, 1, figsize=(10, 10))
+
+        V_col, G_col = np.loadtxt(os.path.join(path_to_CET, "columnar_CET.txt")).T
+        V_equ, G_equ = np.loadtxt(os.path.join(path_to_CET, "equiaxed_CET.txt")).T
+
+        ax4.loglog(V_col, G_col, c='k')
+        ax4.loglog(V_equ, G_equ, c='k')
+        # Ajouter du texte en haut à gauche et en bas à droite
+        ax4.text(
+            0.05, 0.95, 'Colonnaire', transform=ax4.transAxes, fontsize=12, fontweight='bold',
+            verticalalignment='top', horizontalalignment='left', bbox=dict(facecolor='white', boxstyle='round,pad=0.5', alpha=0.8))
+        ax4.text(
+            0.95, 0.05, f'Equiaxe', transform=ax4.transAxes, fontsize=12, fontweight='bold',
+            verticalalignment='bottom', horizontalalignment='right', bbox=dict(facecolor='white', boxstyle='round,pad=0.5', alpha=0.8))
+
+        ax4.scatter(solidification_rate_on_isotherm, filtered_gradient)
+            
+        # ax.set_title(method)
+        ax4.set_xlim(1e-6, 1e1)
+        ax4.set_ylim(1e2, 3e6)
+        ax4.set_xlabel('Solidification rate $V$ (m/s)', fontsize=14)
+        ax4.tick_params(axis='both', which='major', labelsize=12)
+
+        # Display the grid
+        ax4.grid(True, which="major", ls="--")
+        # ax4.legend()
+
+        pdf4.savefig(fig4)
+        plt.close(fig4)
 
 def plot_gradient(GradThermique, crop_thermo: np.ndarray, gradient_norm: np.ndarray, masked_X0: np.ndarray, masked_Y0: np.ndarray, masked_fx0: np.ndarray, masked_fy0: np.ndarray, masked_norm0: np.ndarray, T_target: float, dir_name: str, cpt: int) -> None:
     """

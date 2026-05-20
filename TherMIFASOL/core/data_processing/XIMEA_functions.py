@@ -1,9 +1,13 @@
+from os import times
+
 import cv2
 import numpy as np
 import pandas as pd
 from pathlib import Path
 from tqdm import tqdm
 import random
+from datetime import datetime
+import time
 
 from TherMIFASOL.core.variables.GlobalVariables import (
     CHANNEL, SUB_WIDTH_XIQ, SUB_LENGTH_XIQ, LINES_CRED, COLUMNS_CRED,
@@ -38,7 +42,7 @@ def load_splitted_channels_nir(frame_path):
 
     # Organize channels
     img_nir=np.zeros((CHANNEL, SUB_WIDTH_XIQ, SUB_LENGTH_XIQ))
-    period_channel = np.sqrt(CHANNEL)
+    period_channel = int(np.sqrt(CHANNEL))
     for cpt in range(CHANNEL):
         i = int(cpt // period_channel)
         j = int(cpt % period_channel)
@@ -288,16 +292,20 @@ def temporal_mean(path_data_TCN: str) -> np.ndarray:
     path_data_TCN = Path(path_data_TCN)
     metadata_path = path_data_TCN / 'metadata.csv'
 
+    npy_files = list(path_data_TCN.glob('*.npy'))
+    nb_files = len(npy_files)
+
     # Load metadata
-    metadata = pd.read_csv(metadata_path, encoding='unicode_escape', sep=',')
+    metadata = pd.read_csv(metadata_path, encoding='unicode_escape', sep=',', nrows=nb_files-1)
     times = metadata['t(s)'].to_numpy()
     ids = metadata['ImageUniqueID'].to_numpy()
     nb_img = len(ids)
 
     frames = []
 
-    print(f"Loading {nb_img} frames from: {path_data_TCN}")
-    for t, i in tqdm(zip(times, ids), total=nb_img, desc="Loading frames"):
+    # print(f"Loading {nb_img} frames from: {path_data_TCN}")
+    #for t, i in tqdm(zip(times, ids), total=nb_img, desc="Loading frames"):
+    for t, i in zip(times, ids):
         filename = path_data_TCN / f"{i:06d}_{t:.3f}.npy"
         try:
             frame = np.load(filename)

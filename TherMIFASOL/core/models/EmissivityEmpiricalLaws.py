@@ -157,6 +157,32 @@ def first_order_emissivity(time: np.ndarray, depth: float, delay: float, params_
     )
     return response
 
+def first_order_emissivity_article(
+        chi:np.array, 
+        zeta:float, 
+        eps_m=0.73, 
+        gamma=0.7,
+        laser_speed=16.7
+        ):
+    
+    # Constants obtained by least square optimization
+    eps_0_hat = 0.006
+    zeta_a_hat = -0.4
+    zeta_b_hat = 0.72
+    #
+    tau_0 = 0.066
+    zeta_a = 2.3
+    zeta_b = 1.84
+
+
+    relax_time = tau_0 * (1 + (zeta/zeta_a) + (zeta/zeta_b)**2)
+    eps_hat = eps_0_hat * (1 + (zeta/zeta_a_hat) + (zeta/zeta_b_hat)**2)
+    response = eps_hat + (eps_m - eps_hat) * (1 - np.exp(-(np.abs(chi)/(relax_time*laser_speed))**gamma))
+
+    return response
+
+
+
 # tools
 def mean_absolute_image_difference(im1: Union[np.ndarray, None], im2: Union[np.ndarray, None]) -> float:
     """

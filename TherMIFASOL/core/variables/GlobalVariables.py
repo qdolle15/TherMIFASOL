@@ -4,6 +4,8 @@ import numpy as np
 # Constants related to the alloy under study
 T_SOLIDUS = 1530.15  # Solidus temperature of Inconel 718 [K]
 T_LIQUIDUS = 1342 + 273.15  # Liquidus temperature of Inconel 718 [K]
+T_SOLIDUS_GANDIN = 1075 + 273.15  # K
+T_LIQUIDUS_GANDIN = 1337 + 273.15  # K
 
 # Physical constants
 C = 299792458  # Speed of light in vacuum [m/s]

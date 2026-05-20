@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from tqdm import tqdm
 
+from joblib import Parallel, delayed
+
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
@@ -102,7 +104,7 @@ class RegularizedThermalGradient:
             xmin, ymin, x_dist, y_dist = self.crop_data
             xmax, ymax = xmin + x_dist, ymin + y_dist
 
-        # Domain extention with NaN values related to the 'fac_exp' extension factor
+        # Domain extension with NaN values related to the 'fac_exp' extension factor
         res = self.raw_image[xmin:xmax, ymin:ymax]
         res = np.hstack((res, np.full((res.shape[0], int(res.shape[1]*fac_exp)), fill_value=np.nan)))
         res = np.hstack((np.full((res.shape[0], int(res.shape[1]*fac_exp)), fill_value=np.nan), res))
@@ -520,7 +522,48 @@ class RegularizedThermalGradient:
 
         return alpha_min, L_alpha, J_alpha
 
+    def L_curve_LECHAT(self, alpha_range: np.ndarray) -> tuple:
+        if self.print_state:
+            print("\n\nL-curve processing...\n")
 
+        grad_fourier_X, grad_fourier_Y = self.grad_Fourier_from
+
+        def find_corner(L_alpha, J_alpha):
+            # Normalisation des valeurs
+            L_alpha = (L_alpha - np.min(L_alpha)) / (np.max(L_alpha) - np.min(L_alpha))
+            J_alpha = (J_alpha - np.min(J_alpha)) / (np.max(J_alpha) - np.min(J_alpha))
+
+            # Calcul des différences
+            dL = np.diff(L_alpha)
+            dJ = np.diff(J_alpha)
+
+            # Calcul des courbures
+            curvature = np.abs(dJ[1:] * dL[:-1] - dJ[:-1] * dL[1:]) / (dL[:-1]**2 + dJ[:-1]**2)**1.5
+
+            # Indice du "coin"
+            corner_index = np.argmax(curvature) + 1  # +1 à cause de np.diff
+            return corner_index
+
+        # Fonction pour un alpha donné
+        def process_alpha(alpha):
+            regul_fx, regul_fy, regul_dfxdx, regul_dfydy, regul_dfxdy, regul_dfydx = self.L_curve_terms(alpha)
+            J = 0.5 * simps(simps((regul_fx - grad_fourier_X)**2 + (regul_fy - grad_fourier_Y)**2, self.x), self.y)
+            L = 0.5 * simps(simps((regul_dfxdx)**2 + (regul_dfydy)**2 + 2 * regul_dfxdy * regul_dfydx, self.x), self.y)
+            return J, L
+
+        # Parallélisation
+        results = Parallel(n_jobs=-1)(delayed(process_alpha)(alpha) for alpha in tqdm(alpha_range, desc="Processing alpha"))
+
+        J_alpha = np.array([r[0] for r in results])
+        L_alpha = np.array([r[1] for r in results])
+
+        alpha_min = alpha_range[np.argmin(np.sqrt(L_alpha**2 + J_alpha**2))]
+        corner_index = find_corner(L_alpha, J_alpha)
+        alpha_optimal = alpha_range[corner_index]
+
+        return alpha_optimal, L_alpha, J_alpha
+
+    
     # Computation
     def get_Fourier_coefficients(self) -> np.ndarray:
         """
@@ -1064,13 +1107,15 @@ class RegularizedThermalGradient:
 
     def show_L_curve(self, alpha_range=np.arange(0.34, 0.36, 0.001)):
 
-        best_alpha, L, J = self.L_curve(alpha_range=alpha_range)
+        best_alpha, L, J = self.L_curve_LECHAT(alpha_range=alpha_range)
         id_ = np.where(best_alpha == alpha_range)[0][0]
 
         plt.plot(L, J, 'ko--')
         plt.scatter(L[0], J[0], color='b', s=125, label=fr"$\alpha = {alpha_range[0]:.3f}$")
         plt.scatter(L[id_], J[id_], color='r', s=125, label=fr"$\alpha = {best_alpha:.3f}$")
         plt.scatter(L[-1], J[-1], color='g', s=125, label=fr"$\alpha = {alpha_range[-1]:.3f}$")
+        for i, alpha in enumerate(alpha_range):
+            plt.text(L[i], J[i], f' {alpha:.3f}', fontsize=9)
         plt.xlabel(r"$L(f_\alpha)$")
         plt.ylabel(r"$J(f_\alpha)$")
         plt.legend()

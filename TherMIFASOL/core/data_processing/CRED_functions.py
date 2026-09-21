@@ -21,24 +21,6 @@ def load_cred_array(path_image:str):
     arr_raw = np.load(path_image).astype(np.float64)
     return arr_raw
 
-# def load_cred(camera_id, record_id, time_record, id_record):
-#     """
-#     Load CRED data from a file.
-
-#     Parameters:
-#     camera_id (int): Camera identifier.
-#     record_id (int): Recording identifier.
-#     time_record (list): List of recording times.
-#     id_record (list): List of recording IDs.
-
-#     Returns:
-#     np.array: Raw digital level data loaded.
-#     """
-#     t_, id_recording = time_record[record_id], id_record[record_id]
-#     arr_raw = np.load(f'./{WORK_PATH}/CRED/CRED_normal_{camera_id:05d}/{id_recording:06d}_{t_:.3f}.npy').astype(np.float64)
-#     arr_raw[0, :4] = np.nan
-#     return arr_raw
-
 def dl_to_nuc(dl_raw, nuc_table):
     """
     Apply NUC correction to raw DL data.

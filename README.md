@@ -84,5 +84,5 @@ Distributed for academic and research purposes. Please cite the author or the co
 
 ## Author
 Developed by Quentin Dollé during his Ph.D. thesis.  
-📧 quentin.dolle@polytechnique.edu  
+mel: quentin.dolle@polytechnique.edu  
 Feel free to open issues or contribute.

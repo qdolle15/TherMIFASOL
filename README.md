@@ -79,6 +79,7 @@ pip uninstall TherMIFASOL
 
 ## License / Citation
 Distributed for academic and research purposes. Please cite the author or the corresponding publication if used.
+[![DOI](https://zenodo.org/badge/991196439.svg)](https://doi.org/10.5281/zenodo.22894317)
 
 ---
 
